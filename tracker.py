@@ -10,7 +10,7 @@ changes. Embed color is pulled from the product's own image.
 STORES_CONFIG format (set as a GitHub Actions repo secret):
 [
   {
-    "label": "Adela Official Store",
+    "label": "ADÉLA",
     "domain": "shop.adelaxo.com",
     "token": "public_storefront_token",
     "webhook": "https://discord.com/api/webhooks/xxxx/yyyy",
