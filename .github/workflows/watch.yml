@@ -2,9 +2,20 @@ name: hookify
 
 on:
   schedule:
+    # every 10 minutes (GitHub may delay this during high load)
     - cron: "*/10 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "run = normal check/diff/alert. preview = send real embeds for the most recent products, doesn't touch saved state."
+        required: true
+        default: "run"
+        type: choice
+        options:
+          - run
+          - preview
 
+# Prevent overlapping runs from racing on the state files
 concurrency:
   group: hookify
   cancel-in-progress: false
@@ -24,9 +35,11 @@ jobs:
       - name: Run tracker
         env:
           STORES_CONFIG: ${{ secrets.STORES_CONFIG }}
+          HOOKIFY_MODE: ${{ inputs.mode || 'run' }}
         run: python3 tracker.py
 
       - name: Commit updated state
+        if: ${{ inputs.mode != 'preview' }}
         run: |
           git config user.name "hookify-bot"
           git config user.email "actions@users.noreply.github.com"
