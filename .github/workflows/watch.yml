@@ -2,8 +2,10 @@ name: hookify
 
 on:
   schedule:
-    # every 10 minutes (GitHub may delay this during high load)
-    - cron: "*/10 * * * *"
+    # every 5 minutes - GitHub's practical floor for scheduled workflows;
+    # anything shorter gets throttled/delayed anyway, so this is the fastest
+    # reliable interval, not just an arbitrary choice.
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -31,6 +33,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install Pillow
 
       - name: Run tracker
         env:
