@@ -294,6 +294,55 @@ def run_store(store):
     save_state(label, new_products)
 
 
+def preview_store(store, count):
+    """Pull the real, current catalog and send real embeds for the most
+    recently created products — one of each alert type, using actual data
+    (title, image, price) so you can see exactly what a real alert looks
+    like. Does not touch state/, so it won't affect the next normal run."""
+    label = store["label"]
+    log(f"Preview: fetching real catalog for {label} ({store['domain']})...")
+    try:
+        products = fetch_all_products(store["domain"], store["token"])
+    except Exception as e:
+        log(f"{label}: FAILED to fetch products: {e}")
+        return
+
+    if not products:
+        log(f"{label}: store returned zero products, nothing to preview.")
+        return
+
+    # products dict preserves API order: sortKey CREATED_AT reverse = newest first
+    most_recent = list(products.values())[:count]
+    log(f"{label}: sending real preview embeds for {len(most_recent)} product(s).")
+
+    embeds = []
+    for product in most_recent:
+        embeds.append(build_embed("new", store, product))
+    post_to_discord(store["webhook"], store["label"], embeds)
+
+    if most_recent:
+        restock_embed = build_embed("restock", store, most_recent[0])
+        sellout_embed = build_embed("sellout", store, most_recent[0])
+        variants = most_recent[0]["variants"]
+        if variants:
+            old_price = variants[0]["price"]
+            try:
+                new_price_val = str(round(float(old_price) + 5, 2))
+            except ValueError:
+                new_price_val = old_price
+            price_embed = build_embed(
+                "price", store, most_recent[0],
+                extra={"old": old_price, "new": new_price_val},
+            )
+        else:
+            price_embed = None
+        post_to_discord(store["webhook"], store["label"], [restock_embed])
+        rest = [sellout_embed] + ([price_embed] if price_embed else [])
+        post_to_discord(store["webhook"], store["label"], rest)
+
+    log(f"{label}: preview sent — check Discord.")
+
+
 def main():
     raw = os.environ.get("STORES_CONFIG")
     if not raw:
@@ -305,6 +354,14 @@ def main():
     except json.JSONDecodeError as e:
         log(f"STORES_CONFIG is not valid JSON: {e}")
         sys.exit(1)
+
+    mode = os.environ.get("HOOKIFY_MODE", "run")
+    preview_count = int(os.environ.get("HOOKIFY_PREVIEW_COUNT", "3"))
+
+    if mode == "preview":
+        for store in stores:
+            preview_store(store, preview_count)
+        return
 
     for store in stores:
         run_store(store)
