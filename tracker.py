@@ -228,7 +228,10 @@ def post_to_discord(webhook, store_label, embeds):
         req = urllib.request.Request(
             webhook,
             data=body,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (compatible; hookify/1.0; +https://github.com)",
+            },
             method="POST",
         )
         try:
